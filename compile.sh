@@ -6,12 +6,7 @@
 
 set -ex
 
-git submodule init
-git submodule update
-
-cd extlib/thrill
-git submodule update 
-cd ../../
+git submodule update --init --recursive
 
 CMAKE_OPTS=
 

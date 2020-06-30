@@ -1,3 +1,4 @@
 [submodule "extlib/thrill"]
 	path = extlib/thrill
-	url = https://github.com/thrill/thrill.git
+    url = https://github.com/thrill/thrill.git
+        branch = master
