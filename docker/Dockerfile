@@ -13,4 +13,7 @@ RUN apt-get install -y libcurl4-openssl-dev
 RUN apt-get install -y libboost-all-dev
 RUN apt-get install -y clang
 
+ENV THRILL_NET local
+ENV THRILL_LOCAL 4
+
 WORKDIR /mnt/project
