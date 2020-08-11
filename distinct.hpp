@@ -15,20 +15,20 @@
 #include "thrill/api/rebalance.hpp"
 #include "thrill/api/collapse.hpp"
 
-template <typename ValueType, typename Stack, typename KeyExtractor>
+template <typename ValueType, typename Stack, typename KeyExtractor, typename HashFunction>
 auto Distinct(
-    thrill::api::DIA<ValueType, Stack> &dia, const KeyExtractor &keyFun)
+    thrill::api::DIA<ValueType, Stack> &dia, const KeyExtractor &keyFun, const HashFunction &hashFunction)
 {
-    auto sorted = dia.Sort([&keyFun](const ValueType &a, const ValueType &b) -> bool { return keyFun(a) < keyFun(b); });
+    // auto sorted = dia.Sort([&keyFun](const ValueType &a, const ValueType &b) -> bool { return keyFun(a) < keyFun(b); });
 
-    auto ret = sorted.template FlatWindow<ValueType>(
-        2,
-        [&keyFun](size_t, auto &values, auto emit) {
-            if (keyFun(values[0]) != keyFun(values[1]))
-                emit(values[0]);
-        },
-        [](size_t, auto &values, auto emit) { emit(values[0]); }).Rebalance();
-    return ret;
+    // auto ret = sorted.template FlatWindow<ValueType>(
+    //     2,
+    //     [&keyFun](size_t, auto &values, auto emit) {
+    //         if (keyFun(values[0]) != keyFun(values[1]))
+    //             emit(values[0]);
+    //     },
+    //     [](size_t, auto &values, auto emit) { emit(values[0]); });
+    // return ret;
 
     // auto head = Head(sorted);
     // auto tail = Tail(sorted);
@@ -39,9 +39,11 @@ auto Distinct(
     // auto filtered = FilterBySecond(cleaned);
     // return thrill::api::Union(head, filtered);
 
-    // return sorted.ReduceByKey(
-    //           [](const ValueType &key) -> ValueType { return key; },
-    //           [](const ValueType &val, const ValueType &) -> ValueType { return val; });
+    return dia.ReduceByKey(
+              keyFun,
+              [](const ValueType &val, const ValueType &) -> ValueType { return val; },
+              thrill::api::DefaultReduceConfig(),
+              hashFunction).Rebalance().Execute();
 
     // return dia.template GroupByKey<ValueType>(
     //     thrill::api::NoLocationDetectionTag,
@@ -53,5 +55,5 @@ template <typename ValueType, typename Stack>
 auto Distinct(
     thrill::api::DIA<ValueType, Stack> &dia)
 {
-    return Distinct(dia, [](const ValueType &v) -> ValueType { return v; });
+    return Distinct(dia, [](const ValueType &v) -> ValueType { return v; }, std::hash<ValueType>());
 }

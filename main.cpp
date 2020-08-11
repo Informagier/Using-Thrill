@@ -18,8 +18,8 @@
 
 using thrill::DIA;
 
-constexpr int width = 6;
-constexpr int height = 5;
+constexpr int width = 4;
+constexpr int height = 6;
 constexpr int size = width * height;
 
 typedef char GameResult;
@@ -147,7 +147,9 @@ auto nextLayer(const DIA<C4, Stack> &inputLayer)
             for (size_t j = 0; j < results.size(); j++)
                 emit(results[j].aligned().minified());
         });
-    return Distinct(nextProtoLayer);
+    return Distinct(nextProtoLayer, [](const C4::Minified &c4){
+        return c4;}, [](const C4::Minified &c4){
+        return c4.hash();});
 }
 
 template <typename Stack>
