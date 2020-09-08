@@ -18,8 +18,8 @@
 
 using thrill::DIA;
 
-constexpr int width = 4;
-constexpr int height = 6;
+constexpr int width = 5;
+constexpr int height = 4;
 constexpr int size = width * height;
 
 typedef char GameResult;
@@ -29,7 +29,8 @@ constexpr GameResult YELLOW = 2;
 constexpr GameResult TIE = 3;
 
 typedef Connect4<width, height> C4;
-typedef std::pair<C4::Minified, GameResult> Game;
+typedef C4::Minified C4M;
+typedef std::pair<C4M, GameResult> Game;
 
 std::string displayGameResult(GameResult &res)
 {
@@ -59,60 +60,60 @@ GameResult getPlayer(int turn)
 template <typename Stack>
 std::vector<DIA<Game, Stack>> propagateResults(const std::vector<DIA<Game, Stack>> &possibilityTree)
 {
-    std::vector<DIA<Game, Stack>> ret{possibilityTree};
+    std::vector<DIA<Game, Stack>> ret{ possibilityTree };
     for (size_t i = ret.size() - 1; i > 0; i--)
     {
-        auto backwardsMapping = ret[i - 1].template FlatMap<std::pair<C4::Minified, Game>>([](const Game &game, auto emit) {
+        auto backwardsMapping = ret[i - 1].template FlatMap<std::pair<C4M, Game>>([](const Game &game, auto emit) {
             if (game.second == UNDEFINED)
             {
                 C4 c4 = game.first.toConnect4();
                 std::vector<C4> nextGames = c4.nextFields();
                 for (C4 nextGame : nextGames)
                 {
-                    emit(std::pair<C4::Minified, Game>{nextGame.minified(), game});
+                    emit(std::pair<C4M, Game>{nextGame.minified(), game});
                 }
             }
-        });
+            });
         auto establishedResults = ret[i - 1].Filter([](const Game &game) {
             return game.second != UNDEFINED;
-        });
+            });
         auto joined = thrill::api::InnerJoin(
             thrill::api::NoLocationDetectionTag,
             ret[i],
             backwardsMapping,
-            [](const Game &game) -> C4::Minified {
+            [](const Game &game) -> C4M {
                 return game.first;
             },
-            [](const std::pair<C4::Minified, Game> &value) -> C4::Minified {
+            [](const std::pair<C4M, Game> &value) -> C4M {
                 return value.first;
             },
-            [&](const Game &game, const std::pair<C4::Minified, Game> &prevGame) -> std::pair<C4::Minified, std::pair<GameResult, GameResult>> {
-                const C4::Minified parentField = prevGame.second.first;
-                return std::pair<C4::Minified, std::pair<GameResult, GameResult>>{parentField, std::pair<GameResult, GameResult>{getPlayer(parentField.toConnect4().move), game.second}};
+                [&](const Game &game, const std::pair<C4M, Game> &prevGame) -> std::pair<C4M, std::pair<GameResult, GameResult>> {
+                const C4M parentField = prevGame.second.first;
+                return std::pair<C4M, std::pair<GameResult, GameResult>>{parentField, std::pair<GameResult, GameResult>{getPlayer(parentField.toConnect4().move), game.second}};
             },
-            [](const C4::Minified &mini) -> size_t { return mini.hash(); });
+                [](const C4M &mini) -> size_t { return mini.hash(); });
         auto reduced = joined.ReduceByKey(
-                                 [](const std::pair<C4::Minified, std::pair<GameResult, GameResult>> &game) { return game.first; },
-                                 [](const std::pair<C4::Minified, std::pair<GameResult, GameResult>> &a, const std::pair<C4::Minified, std::pair<GameResult, GameResult>> &b) -> std::pair<C4::Minified, std::pair<GameResult, GameResult>> {
-                                     C4::Minified game = a.first;
-                                     const GameResult me = a.second.first;
-                                     const GameResult aRes = a.second.second;
-                                     const GameResult bRes = b.second.second;
-                                     GameResult res = aRes;
-                                     if (aRes == me || bRes == me)
-                                         res = me;
-                                     else if (aRes == UNDEFINED || bRes == UNDEFINED)
-                                         res = UNDEFINED;
-                                     else if (aRes == TIE || bRes == TIE)
-                                         res = TIE;
-                                     return std::pair<C4::Minified, std::pair<GameResult, GameResult>>{game, std::pair<GameResult, GameResult>{me, res}};
-                                 },
-                                 thrill::api::DefaultReduceConfig(),
-                                 [](const C4::Minified &mini) -> size_t { return mini.hash(); })
-                           .Map([](const std::pair<C4::Minified, std::pair<GameResult, GameResult>> &intermediateResult) -> Game {
-                               return Game{intermediateResult.first, intermediateResult.second.second};
-                           });
-        ret[i - 1] = thrill::api::Union(reduced, establishedResults).Rebalance().Execute().Collapse();
+            [](const std::pair<C4M, std::pair<GameResult, GameResult>> &game) { return game.first; },
+            [](const std::pair<C4M, std::pair<GameResult, GameResult>> &a, const std::pair<C4M, std::pair<GameResult, GameResult>> &b) -> std::pair<C4M, std::pair<GameResult, GameResult>> {
+                C4M game = a.first;
+                const GameResult me = a.second.first;
+                const GameResult aRes = a.second.second;
+                const GameResult bRes = b.second.second;
+                GameResult res = aRes;
+                if (aRes == me || bRes == me)
+                    res = me;
+                else if (aRes == UNDEFINED || bRes == UNDEFINED)
+                    res = UNDEFINED;
+                else if (aRes == TIE || bRes == TIE)
+                    res = TIE;
+                return std::pair<C4M, std::pair<GameResult, GameResult>>{game, std::pair<GameResult, GameResult>{me, res}};
+            },
+            thrill::api::DefaultReduceConfig(),
+                [](const C4M &mini) -> size_t { return mini.hash(); })
+            .Map([](const std::pair<C4M, std::pair<GameResult, GameResult>> &intermediateResult) -> Game {
+                return Game{ intermediateResult.first, intermediateResult.second.second };
+                });
+            ret[i - 1] = thrill::api::Union(reduced, establishedResults).Rebalance().Execute().Collapse();
     }
     return ret;
 }
@@ -123,51 +124,53 @@ auto analyzeLayer(const DIA<Game, Stack> &inputLayer)
     return inputLayer.Map([](const Game &g) -> Game {
         if (g.second == UNDEFINED)
         {
-            C4::Minified field = g.first;
+            C4M field = g.first;
             C4 c4 = field.toConnect4();
             if (c4.hasWon())
             {
-                return Game{field, getPlayer(c4.move + 1)};
+                return Game{ field, getPlayer(c4.move + 1) };
             }
             else if (c4.move == size)
             {
-                return Game{field, TIE};
+                return Game{ field, TIE };
             }
         }
         return g;
-    });
+        });
 }
 
 template <typename Stack>
 auto nextLayer(const DIA<C4, Stack> &inputLayer)
 {
-    auto nextProtoLayer = inputLayer.template FlatMap<C4::Minified>(
+    auto nextProtoLayer = inputLayer.template FlatMap<C4M>(
         [](const C4 &c4, auto emit) {
             std::vector<C4> results = c4.nextFields();
             for (size_t j = 0; j < results.size(); j++)
                 emit(results[j].aligned().minified());
         });
-    return Distinct(nextProtoLayer, [](const C4::Minified &c4){
-        return c4;}, [](const C4::Minified &c4){
-        return c4.hash();});
+    return Distinct(
+        nextProtoLayer,
+        [](const C4M &c4) {return c4;},
+        [](const C4M &c4) {return c4.hash();}
+    );
 }
 
 template <typename Stack>
-auto nextLayer(const DIA<C4::Minified, Stack> &inputLayer)
+auto nextLayer(const DIA<C4M, Stack> &inputLayer)
 {
-    return nextLayer(inputLayer.Map([](const C4::Minified &mini) -> C4 { return mini.toConnect4(); }));
+    return nextLayer(inputLayer.Map([](const C4M &mini) -> C4 { return mini.toConnect4(); }));
 }
 
 template <typename Stack>
 auto nextLayer(const DIA<Game, Stack> &inputLayer)
 {
-    return nextLayer(inputLayer.Map([](const Game &game) -> C4::Minified { return game.first; })).Map([](const C4::Minified &mini) -> Game { return Game{mini, UNDEFINED}; });
+    return nextLayer(inputLayer.Map([](const Game &game) -> C4M { return game.first; })).Map([](const C4M &mini) -> Game { return Game{ mini, UNDEFINED }; });
 }
 
 void Process(thrill::Context &ctx)
 {
     std::vector<Game> init{};
-    init.push_back(Game{C4::init().minified(), UNDEFINED});
+    init.push_back(Game{ C4::init().minified(), UNDEFINED });
     auto initDIA = thrill::api::EqualToDIA(ctx, init).Collapse();
     std::vector<decltype(initDIA)> possibilityTree;
     possibilityTree.push_back(initDIA);
