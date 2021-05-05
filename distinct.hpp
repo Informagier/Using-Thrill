@@ -39,21 +39,23 @@ auto Distinct(
     // auto filtered = FilterBySecond(cleaned);
     // return thrill::api::Union(head, filtered);
 
-    return dia.ReduceByKey(
-              keyFun,
-              [](const ValueType &val, const ValueType &) -> ValueType { return val; },
-              thrill::api::DefaultReduceConfig(),
-              hashFunction).Rebalance().Execute();
+    // return dia.ReduceByKey(
+    //           keyFun,
+    //           [](const ValueType &val, const ValueType &) -> ValueType { return val; },
+    //           thrill::api::DefaultReduceConfig(),
+    //           hashFunction);
 
-    // return dia.template GroupByKey<ValueType>(
-    //     thrill::api::NoLocationDetectionTag,
-    //     [](const ValueType val) -> ValueType { return val; },
-    //     [](auto &iter, const ValueType) -> ValueType { return iter.Next(); });
+    return dia.template GroupByKey<ValueType>(
+                  thrill::api::NoLocationDetectionTag,
+                  keyFun,
+                  [](auto &iter, auto /* key */) -> ValueType { auto ret = iter.Next(); while(iter.HasNext()) iter.Next(); return ret; },
+                  hashFunction).Rebalance();
 }
 
 template <typename ValueType, typename Stack>
 auto Distinct(
     thrill::api::DIA<ValueType, Stack> &dia)
 {
-    return Distinct(dia, [](const ValueType &v) -> ValueType { return v; }, std::hash<ValueType>());
+    return Distinct(
+        dia, [](const ValueType &v) -> ValueType { return v; }, std::hash<ValueType>());
 }

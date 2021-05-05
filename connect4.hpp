@@ -9,7 +9,7 @@
 
 using namespace std::rel_ops;
 
-typedef unsigned long long bitboard;
+typedef unsigned int bitboard;
 typedef int stone;
 constexpr stone CURRENT_PLAYER = 1;
 constexpr stone OTHER_PLAYER = 2;
@@ -81,6 +81,10 @@ public:
         bool operator==(const Minified &that) const
         {
             return curr == that.curr && other == that.other;
+        }
+        bool operator!=(const Minified &that) const
+        {
+            return !(*this == that);
         }
 
         bool operator<(const Minified &that) const
