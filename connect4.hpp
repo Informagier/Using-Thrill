@@ -72,8 +72,8 @@ public:
             Connect4 ret;
             ret.curr = curr;
             ret.other = other;
-            std::bitset<sizeof(bitboard) * CHAR_BIT> currCount(curr);
-            std::bitset<sizeof(bitboard) * CHAR_BIT> otherCount(other);
+            std::bitset<sizeof(bitboard)> currCount(curr);
+            std::bitset<sizeof(bitboard)> otherCount(other);
             ret.move = currCount.count() + otherCount.count();
             ret.heights = getHeights(ret);
             return ret;
